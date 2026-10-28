@@ -29,7 +29,7 @@ and splits the payout on-chain.
 | NEP-141 fungible tokens (USDC) | Clients pay with `ft_transfer_call` (invoice id in `msg`); the contract checks it in `ft_on_transfer` and pays each split with `ft_transfer`. A wrong payment panics, so USDC refunds the client automatically | ✅ |
 | NEAR Connect wallet selector | Freelancers and clients sign in with any NEAR wallet (Meteor, HOT, Intear, Ledger, …) and sign transactions in the browser | ✅ |
 | Cross-contract calls + callbacks | Each payout is followed by a callback; if a transfer fails (e.g. recipient not registered on USDC), the share is kept for them to `withdraw` instead of being lost | ✅ |
-| NEAR Intents (1-Click API) | Clients pay with ETH/SOL/BTC; USDC arrives at the contract | planned |
+| NEAR Intents (1-Click API) | Clients pay with ETH, SOL, BTC or USDC on Base/Arbitrum/Solana, from any wallet, with no NEAR account. Settl requests an `EXACT_OUTPUT` quote for the invoice amount with `customRecipientMsg` = the invoice id, so solvers deliver USDC to the contract via `ft_transfer_call` and the normal `ft_on_transfer` marks it paid. Intents is mainnet-only, so on testnet the pay page shows live dry-run prices | 🟡 built; live payments need the mainnet deployment |
 | Meta transactions | Gasless invoice creation for freelancers | planned |
 
 ## Try it
