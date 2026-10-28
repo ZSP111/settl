@@ -3,10 +3,12 @@
 import { use, useEffect, useState } from "react";
 
 import { InvoiceSummary, SplitBreakdown } from "@/components/InvoiceDetails";
+import { PayWithCrypto } from "@/components/PayWithCrypto";
 import { Button, Card, ErrorMessage } from "@/components/ui";
 import { useWallet } from "@/components/WalletProvider";
 import { config } from "@/lib/config";
 import { formatDate, shortAccount } from "@/lib/format";
+import { INTENTS_CONTRACT } from "@/lib/intents";
 import {
   getUsdcBalance,
   type Invoice,
@@ -37,7 +39,15 @@ export function PayView({ params }: { params: Promise<{ id: string }> }) {
       {invoice && (
         <>
           <InvoiceSummary invoice={invoice} />
-          {invoice.status === "Unpaid" && <PayCard invoice={invoice} onSettled={onSettled} />}
+          {invoice.status === "Unpaid" && (
+            <>
+              <PayCard invoice={invoice} onSettled={onSettled} />
+              <Card className="space-y-4">
+                <h2 className="font-display text-lg font-bold">Pay with ETH, SOL, BTC or other USDC</h2>
+                <PayWithCrypto invoice={invoice} onPaid={() => onSettled(null)} />
+              </Card>
+            </>
+          )}
           {invoice.status === "Escrowed" && <EscrowCard invoice={invoice} onSettled={onSettled} />}
           {invoice.status === "Paid" && <Receipt invoice={invoice} txHash={txHash} />}
           {invoice.status === "Cancelled" && (
@@ -103,9 +113,6 @@ function PayCard({ invoice, onSettled }: { invoice: Invoice; onSettled: (txHash:
         </>
       )}
       {error && <ErrorMessage>{error}</ErrorMessage>}
-      <div className="rounded-xl border border-dashed border-line p-3 text-sm text-muted">
-        Paying with ETH, SOL or BTC? Coming soon via NEAR Intents.
-      </div>
     </Card>
   );
 }
@@ -162,7 +169,8 @@ function Receipt({ invoice, txHash }: { invoice: Invoice; txHash: string | null 
           <h2 className="font-display text-lg font-bold text-paid">Paid</h2>
           <p className="text-sm text-muted">
             {invoice.paid_at && formatDate(invoice.paid_at)}
-            {invoice.payer && <> · by {shortAccount(invoice.payer)}</>}
+            {invoice.payer &&
+              (invoice.payer === INTENTS_CONTRACT ? <> · via NEAR Intents</> : <> · by {shortAccount(invoice.payer)}</>)}
           </p>
         </div>
       </div>
