@@ -1,0 +1,21 @@
+# Rust
+target/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+
+# Secrets: never commit these
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials/
+.near-credentials/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
