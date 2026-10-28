@@ -6,6 +6,7 @@ import { useState } from "react";
 import { RequireWallet } from "@/components/RequireWallet";
 import { Button, Card, ErrorMessage } from "@/components/ui";
 import { useWallet } from "@/components/WalletProvider";
+import { config } from "@/lib/config";
 import { decodeSuccessValue } from "@/lib/near";
 import { createInvoiceTransactions, type Split } from "@/lib/settl";
 import { formatUsdc, parseUsdc, splitAmount } from "@/lib/usdc";
@@ -54,9 +55,11 @@ function InvoiceForm() {
   const amountBaseUnits = parseUsdc(amount);
   const basisPoints = splits.map((row) => percentToBasisPoints(row.percent));
   const totalBasisPoints = basisPoints.reduce<number>((sum, bp) => sum + (bp ?? 0), 0);
+  const includesContract = splits.some((row) => row.accountId.trim().toLowerCase() === config.settlContract);
   const splitsValid =
     basisPoints.every((bp) => bp !== null) &&
     splits.every((row) => row.accountId.trim() !== "") &&
+    !includesContract &&
     totalBasisPoints === 10_000;
   const previewShares =
     amountBaseUnits && splitsValid ? splitAmount(amountBaseUnits, basisPoints as number[]) : null;
@@ -199,6 +202,9 @@ function InvoiceForm() {
             Total {totalBasisPoints / 100}%
           </span>
         </div>
+        {includesContract && (
+          <ErrorMessage>{config.settlContract} is the Settl contract itself and can&apos;t receive a share.</ErrorMessage>
+        )}
         {previewShares && splits.length > 1 && (
           <ul className="space-y-1 rounded-xl bg-surface p-3 text-sm">
             {splits.map((row, i) => (

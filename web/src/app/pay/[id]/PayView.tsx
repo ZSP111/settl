@@ -22,6 +22,13 @@ export function PayView({ params }: { params: Promise<{ id: string }> }) {
   const { invoice, notFound, error, reload, loading } = useInvoice(Number(id));
   const [txHash, setTxHash] = useState<string | null>(null);
 
+  // After any wallet transaction, even one the wallet reports as failed, re-read the invoice:
+  // a payment can succeed while one payout inside it fails (that share is kept for `withdraw`).
+  function onSettled(hash: string | null) {
+    if (hash) setTxHash(hash);
+    reload();
+  }
+
   return (
     <div className="mx-auto max-w-md space-y-4">
       {loading && <p className="text-muted">Loading invoice…</p>}
@@ -30,8 +37,8 @@ export function PayView({ params }: { params: Promise<{ id: string }> }) {
       {invoice && (
         <>
           <InvoiceSummary invoice={invoice} />
-          {invoice.status === "Unpaid" && <PayCard invoice={invoice} onPaid={(hash) => { setTxHash(hash); reload(); }} />}
-          {invoice.status === "Escrowed" && <EscrowCard invoice={invoice} onReleased={(hash) => { setTxHash(hash); reload(); }} />}
+          {invoice.status === "Unpaid" && <PayCard invoice={invoice} onSettled={onSettled} />}
+          {invoice.status === "Escrowed" && <EscrowCard invoice={invoice} onSettled={onSettled} />}
           {invoice.status === "Paid" && <Receipt invoice={invoice} txHash={txHash} />}
           {invoice.status === "Cancelled" && (
             <Card>
@@ -47,7 +54,7 @@ export function PayView({ params }: { params: Promise<{ id: string }> }) {
   );
 }
 
-function PayCard({ invoice, onPaid }: { invoice: Invoice; onPaid: (txHash: string) => void }) {
+function PayCard({ invoice, onSettled }: { invoice: Invoice; onSettled: (txHash: string | null) => void }) {
   const { accountId, connect, signAndSend } = useWallet();
   const [balance, setBalance] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
@@ -65,9 +72,10 @@ function PayCard({ invoice, onPaid }: { invoice: Invoice; onPaid: (txHash: strin
     setError(null);
     try {
       const [outcome] = await signAndSend([payInvoiceTransaction(invoice)]);
-      onPaid(outcome.transaction.hash);
+      onSettled(outcome.transaction.hash);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      onSettled(null);
     } finally {
       setPaying(false);
     }
@@ -102,7 +110,7 @@ function PayCard({ invoice, onPaid }: { invoice: Invoice; onPaid: (txHash: strin
   );
 }
 
-function EscrowCard({ invoice, onReleased }: { invoice: Invoice; onReleased: (txHash: string) => void }) {
+function EscrowCard({ invoice, onSettled }: { invoice: Invoice; onSettled: (txHash: string | null) => void }) {
   const { accountId, connect, signAndSend } = useWallet();
   const [releasing, setReleasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,9 +121,10 @@ function EscrowCard({ invoice, onReleased }: { invoice: Invoice; onReleased: (tx
     setError(null);
     try {
       const [outcome] = await signAndSend([releaseEscrowTransaction(invoice.id)]);
-      onReleased(outcome.transaction.hash);
+      onSettled(outcome.transaction.hash);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      onSettled(null);
     } finally {
       setReleasing(false);
     }
