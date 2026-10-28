@@ -6,9 +6,9 @@ A freelancer creates an invoice and gets a payment link. The client opens the li
 and the freelancer receives USDC on NEAR. Payments can be split automatically between several accounts,
 and can be held in escrow until the client approves the work.
 
-> **Status: in development.** Done so far: the smart contract handles the full invoice lifecycle:
-> create, pay in USDC, split payouts, escrow, cancel. The web app and NEAR Intents are next.
-> See [Roadmap](#roadmap).
+> **Status: in development.** Done so far: the smart contract handles the full invoice lifecycle
+> (create, pay in USDC, split payouts, escrow, cancel), and the web app covers create → share link →
+> pay → receipt, plus a dashboard. Next: testnet deployment, then NEAR Intents. See [Roadmap](#roadmap).
 
 ## The problem
 Freelancers paid in crypto chase clients for the "right" token and chain, pay bridge and exchange fees,
@@ -21,6 +21,7 @@ and splits the payout on-chain.
 | Rust smart contract (`near-sdk`) | Stores invoices, validates splits, receives USDC and pays it out | ✅ |
 | Storage staking | The freelancer attaches a small NEAR deposit to pay for their invoice's on-chain storage; the unused part is refunded | ✅ |
 | NEP-141 fungible tokens (USDC) | Clients pay with `ft_transfer_call` (invoice id in `msg`); the contract checks it in `ft_on_transfer` and pays each split with `ft_transfer`. A wrong payment panics, so USDC refunds the client automatically | ✅ |
+| NEAR Connect wallet selector | Freelancers and clients sign in with any NEAR wallet (Meteor, HOT, Intear, Ledger, …) and sign transactions in the browser | ✅ |
 | Cross-contract calls + callbacks | Each payout is followed by a callback; if a transfer fails (e.g. recipient not registered on USDC), the share is kept for them to `withdraw` instead of being lost | ✅ |
 | NEAR Intents (1-Click API) | Clients pay with ETH/SOL/BTC; USDC arrives at the contract | planned |
 | Meta transactions | Gasless invoice creation for freelancers | planned |
@@ -39,6 +40,17 @@ cargo near build non-reproducible-wasm   # build target/near/settl.wasm
 The end-to-end tests start a local NEAR chain (downloaded on first run), deploy Settl and a mock USDC
 token, and check real balances after: a 70/30 split payment, a wrong-amount refund, escrow then
 release, and a payout to an unregistered account that is withdrawn later.
+
+### Web app
+```bash
+cd web
+npm install
+cp .env.example .env.local
+npm run dev        # open http://localhost:3000
+```
+Do: open `/invoices/new`, connect a NEAR testnet wallet, create an invoice. See: a share page with the
+payment link. Open the link (e.g. on a phone), pay with a wallet holding testnet USDC. See: the receipt
+with each collaborator's share.
 
 ## Contract API
 | Function | Type | Description |
@@ -65,14 +77,14 @@ contract/   Rust smart contract (cargo-near project)
   src/tests/       unit tests
   tests/           end-to-end sandbox tests
   mock-usdc/       minimal NEP-141 token used only by the tests
-web/        Next.js app (coming)
+web/        Next.js app (see web/README.md)
 ```
 
 ## Roadmap
 1. ✅ Contract: create invoice, views, unit tests
 2. ✅ Contract: pay via `ft_on_transfer`, payouts to splits, escrow release, cancel, end-to-end tests
 3. Deploy to testnet
-4. Web: create invoice → payment link → mobile pay page → receipt; freelancer dashboard
+4. ✅ Web: create invoice → payment link → mobile pay page → receipt; freelancer dashboard
 5. Pay with any token via NEAR Intents; gasless via meta transactions
 6. Income proof page, overdue reminders
 
