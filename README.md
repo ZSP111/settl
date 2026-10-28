@@ -8,7 +8,12 @@ and can be held in escrow until the client approves the work.
 
 > **Status: in development.** Done so far: the smart contract handles the full invoice lifecycle
 > (create, pay in USDC, split payouts, escrow, cancel), and the web app covers create → share link →
-> pay → receipt, plus a dashboard. Next: testnet deployment, then NEAR Intents. See [Roadmap](#roadmap).
+> pay → receipt, plus a dashboard. **Live on NEAR testnet.** Next: NEAR Intents. See [Roadmap](#roadmap).
+
+## Deployed
+| Network | Settl contract | Payment token |
+|---|---|---|
+| Testnet | [`settl-billonaire.testnet`](https://testnet.nearblocks.io/address/settl-billonaire.testnet) | Circle USDC `3e2210e1…b8af` ([faucet](https://faucet.circle.com)) |
 
 ## The problem
 Freelancers paid in crypto chase clients for the "right" token and chain, pay bridge and exchange fees,
@@ -18,6 +23,7 @@ and splits the payout on-chain.
 ## NEAR tech used
 | Tech | What it does in Settl | Status |
 |---|---|---|
+| Named accounts | The contract lives at a readable name, `settl-billonaire.testnet`, and invoices show freelancers by their account name instead of a hex address | ✅ |
 | Rust smart contract (`near-sdk`) | Stores invoices, validates splits, receives USDC and pays it out | ✅ |
 | Storage staking | The freelancer attaches a small NEAR deposit to pay for their invoice's on-chain storage; the unused part is refunded | ✅ |
 | NEP-141 fungible tokens (USDC) | Clients pay with `ft_transfer_call` (invoice id in `msg`); the contract checks it in `ft_on_transfer` and pays each split with `ft_transfer`. A wrong payment panics, so USDC refunds the client automatically | ✅ |
@@ -83,7 +89,7 @@ web/        Next.js app (see web/README.md)
 ## Roadmap
 1. ✅ Contract: create invoice, views, unit tests
 2. ✅ Contract: pay via `ft_on_transfer`, payouts to splits, escrow release, cancel, end-to-end tests
-3. Deploy to testnet
+3. ✅ Deploy to testnet
 4. ✅ Web: create invoice → payment link → mobile pay page → receipt; freelancer dashboard
 5. Pay with any token via NEAR Intents; gasless via meta transactions
 6. Income proof page, overdue reminders
