@@ -38,7 +38,7 @@ Requirements: Rust (the pinned toolchain in `contract/rust-toolchain.toml` insta
 
 ```bash
 cd contract
-cargo test --lib    # unit tests: expect "43 passed"
+cargo test --lib    # unit tests: expect "44 passed"
 cargo test --test payment_flow   # end-to-end on a local NEAR sandbox: expect "4 passed"
 cargo near build non-reproducible-wasm   # build target/near/settl.wasm
 ```
