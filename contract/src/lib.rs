@@ -5,6 +5,7 @@
 //! optionally held in escrow until the client approves).
 
 mod invoice;
+mod payment;
 
 use std::collections::HashSet;
 
@@ -28,6 +29,7 @@ const MAX_PAGE_SIZE: u32 = 100;
 enum StorageKey {
     Invoices,
     InvoicesByCreator,
+    PendingBalances,
 }
 
 #[near(contract_state)]
@@ -39,6 +41,9 @@ pub struct Contract {
     invoices: IterableMap<u64, Invoice>,
     /// Invoice ids per freelancer, oldest first.
     invoices_by_creator: LookupMap<AccountId, Vec<u64>>,
+    /// USDC (base units) owed to accounts whose payout could not be sent automatically,
+    /// e.g. because they were not registered on the USDC contract. Claimed with `withdraw`.
+    pending_balances: LookupMap<AccountId, u128>,
 }
 
 #[near]
@@ -50,6 +55,7 @@ impl Contract {
             next_invoice_id: 1,
             invoices: IterableMap::new(StorageKey::Invoices),
             invoices_by_creator: LookupMap::new(StorageKey::InvoicesByCreator),
+            pending_balances: LookupMap::new(StorageKey::PendingBalances),
         }
     }
 
@@ -112,6 +118,20 @@ impl Contract {
         id
     }
 
+    /// Cancels an unpaid invoice. Only its creator can do this.
+    pub fn cancel_invoice(&mut self, invoice_id: u64) {
+        let invoice = self.invoice_mut(invoice_id);
+        require!(
+            invoice.creator == env::predecessor_account_id(),
+            "Only the creator can cancel this invoice"
+        );
+        require!(
+            invoice.status == Status::Unpaid,
+            "Only unpaid invoices can be cancelled"
+        );
+        invoice.status = Status::Cancelled;
+    }
+
     // ---------- Views (free, no wallet needed) ----------
 
     pub fn get_invoice(&self, invoice_id: u64) -> Option<Invoice> {
@@ -139,6 +159,20 @@ impl Contract {
 
     pub fn get_usdc_contract(&self) -> AccountId {
         self.usdc_contract.clone()
+    }
+
+    /// USDC waiting to be claimed by `account_id` with `withdraw`.
+    pub fn get_pending_balance(&self, account_id: AccountId) -> U128 {
+        U128(self.pending_balances.get(&account_id).copied().unwrap_or(0))
+    }
+}
+
+impl Contract {
+    /// Looks up an invoice for modification, panicking if it doesn't exist.
+    fn invoice_mut(&mut self, invoice_id: u64) -> &mut Invoice {
+        self.invoices
+            .get_mut(&invoice_id)
+            .unwrap_or_else(|| env::panic_str("Invoice not found"))
     }
 }
 
