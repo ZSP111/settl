@@ -15,3 +15,9 @@ export const config = {
     "3e2210e1184b45b64c8a434c0a7e7b23cc04ea7eb7a6c3c32520d03d4afcb8af",
   explorerUrl: process.env.NEXT_PUBLIC_EXPLORER_URL ?? "https://testnet.nearblocks.io",
 };
+
+/**
+ * NEAR Intents only exists on mainnet (HACKATHON.md, Q-007). On testnet the "pay with any crypto"
+ * picker still shows live prices from dry-run quotes, but cannot create a deposit address.
+ */
+export const intentsLive = config.network === "mainnet";
