@@ -1,65 +1,7 @@
+use near_sdk::NearToken;
 use near_sdk::json_types::{U64, U128};
-use near_sdk::test_utils::VMContextBuilder;
-use near_sdk::{AccountId, NearToken, testing_env};
 
 use super::*;
-
-fn account(name: &str) -> AccountId {
-    name.parse().unwrap()
-}
-
-fn usdc() -> AccountId {
-    account("usdc.testnet")
-}
-
-fn alice() -> AccountId {
-    account("alice.testnet")
-}
-
-fn bob() -> AccountId {
-    account("bob.testnet")
-}
-
-/// Sets up the blockchain context: `caller` is calling the contract with `deposit` attached.
-fn set_caller(caller: &AccountId, deposit: NearToken) {
-    let context = VMContextBuilder::new()
-        .current_account_id(account("settl.testnet"))
-        .predecessor_account_id(caller.clone())
-        .signer_account_id(caller.clone())
-        .attached_deposit(deposit)
-        .block_timestamp(1_700_000_000_000_000_000)
-        .build();
-    testing_env!(context);
-}
-
-fn new_contract() -> Contract {
-    set_caller(&alice(), NearToken::from_near(0));
-    Contract::new(usdc())
-}
-
-fn split(account_id: AccountId, basis_points: u16) -> Split {
-    Split {
-        account_id,
-        basis_points,
-    }
-}
-
-/// Alice creates a 25 USDC invoice paid 100% to herself.
-fn create_simple_invoice(contract: &mut Contract) -> u64 {
-    create_invoice_with_splits(contract, vec![split(alice(), 10_000)])
-}
-
-fn create_invoice_with_splits(contract: &mut Contract, splits: Vec<Split>) -> u64 {
-    set_caller(&alice(), NearToken::from_millinear(100));
-    contract.create_invoice(
-        "Acme Ltd".to_string(),
-        "Logo design".to_string(),
-        U128(25_000_000),
-        U64(1_800_000_000_000),
-        splits,
-        false,
-    )
-}
 
 // ---------- new ----------
 
