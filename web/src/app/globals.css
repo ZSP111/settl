@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/manrope";
+
+/* Settl design tokens */
+@theme {
+  --color-ink: #0e1116;
+  --color-surface: #f4f5f7;
+  --color-accent: #2448e0;
+  --color-paid: #0b6b48;
+  --color-muted: #5b6270;
+  --color-line: #e2e4e9;
+
+  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
