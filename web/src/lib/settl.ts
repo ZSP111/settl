@@ -56,6 +56,11 @@ export function getInvoicesByCreator(accountId: string): Promise<Invoice[]> {
   });
 }
 
+/** USDC the contract is holding for `accountId` because a payout couldn't be sent automatically. */
+export function getPendingBalance(accountId: string): Promise<string> {
+  return viewFunction(config.settlContract, "get_pending_balance", { account_id: accountId });
+}
+
 export async function getUsdcBalance(accountId: string): Promise<string> {
   return viewFunction(config.usdcContract, "ft_balance_of", { account_id: accountId });
 }
@@ -160,6 +165,13 @@ export function releaseEscrowTransaction(invoiceId: number): Transaction {
   return {
     receiverId: config.settlContract,
     actions: [functionCall("release_escrow", { invoice_id: invoiceId }, 150)],
+  };
+}
+
+export function withdrawTransaction(): Transaction {
+  return {
+    receiverId: config.settlContract,
+    actions: [functionCall("withdraw", {}, 50)],
   };
 }
 

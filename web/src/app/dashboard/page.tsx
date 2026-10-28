@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { RequireWallet } from "@/components/RequireWallet";
-import { ButtonLink, Card, ErrorMessage, StatusPill } from "@/components/ui";
+import { Button, ButtonLink, Card, ErrorMessage, StatusPill } from "@/components/ui";
 import { useWallet } from "@/components/WalletProvider";
 import { formatDate } from "@/lib/format";
-import { getInvoicesByCreator, type Invoice } from "@/lib/settl";
+import { getInvoicesByCreator, getPendingBalance, type Invoice, withdrawTransaction } from "@/lib/settl";
 import { formatUsdc } from "@/lib/usdc";
 
 export default function DashboardPage() {
@@ -18,6 +18,7 @@ export default function DashboardPage() {
         <ButtonLink href="/invoices/new">New invoice</ButtonLink>
       </div>
       <RequireWallet message="Connect your NEAR wallet to see your invoices.">
+        <PendingBalance />
         <InvoiceList />
       </RequireWallet>
     </div>
@@ -78,6 +79,43 @@ function InvoiceList() {
         </ul>
       </Card>
     </div>
+  );
+}
+
+/** Shows USDC waiting for the freelancer when an automatic payout couldn't be delivered. */
+function PendingBalance() {
+  const { accountId, signAndSend } = useWallet();
+  const [pending, setPending] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    if (!accountId) return;
+    getPendingBalance(accountId).then(setPending).catch(() => setPending(null));
+  }, [accountId, version]);
+
+  if (!pending || pending === "0") return null;
+
+  async function withdraw() {
+    setWithdrawing(true);
+    try {
+      await signAndSend([withdrawTransaction()]);
+    } finally {
+      setWithdrawing(false);
+      setVersion((v) => v + 1);
+    }
+  }
+
+  return (
+    <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 border-paid/30 bg-emerald-50">
+      <p>
+        <span className="font-display font-bold text-paid">{formatUsdc(pending)} USDC</span> is waiting for you
+        from payments that couldn&apos;t be sent automatically.
+      </p>
+      <Button onClick={withdraw} disabled={withdrawing}>
+        {withdrawing ? "Confirm in your wallet…" : "Withdraw"}
+      </Button>
+    </Card>
   );
 }
 
