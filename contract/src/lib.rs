@@ -193,6 +193,11 @@ fn assert_valid_splits(splits: &[Split]) {
             seen.insert(&split.account_id),
             "Duplicate account in splits"
         );
+        // USDC refuses transfers from an account to itself, so this payout could never be sent.
+        require!(
+            split.account_id != env::current_account_id(),
+            "The Settl contract cannot receive a split"
+        );
         total += u32::from(split.basis_points);
     }
     require!(

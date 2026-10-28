@@ -138,6 +138,16 @@ fn create_invoice_rejects_duplicate_split_accounts() {
 }
 
 #[test]
+#[should_panic(expected = "The Settl contract cannot receive a split")]
+fn create_invoice_rejects_contract_as_split_recipient() {
+    let mut contract = new_contract();
+    create_invoice_with_splits(
+        &mut contract,
+        vec![split(alice(), 7_000), split(settl(), 3_000)],
+    );
+}
+
+#[test]
 #[should_panic(expected = "Too many splits")]
 fn create_invoice_rejects_too_many_splits() {
     let mut contract = new_contract();
