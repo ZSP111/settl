@@ -1,14 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { RequireWallet } from "@/components/RequireWallet";
 import { Button, Card, ErrorMessage } from "@/components/ui";
 import { useWallet } from "@/components/WalletProvider";
-import { config } from "@/lib/config";
+import { config, gaslessEnabled } from "@/lib/config";
 import { decodeSuccessValue } from "@/lib/near";
-import { createInvoiceTransactions, type Split } from "@/lib/settl";
+import { relaySignedDelegate, returnValueFrom } from "@/lib/relay";
+import {
+  createInvoiceTransaction,
+  createInvoiceTransactions,
+  getSponsoredInvoicesLeft,
+  type NewInvoice,
+  type Split,
+} from "@/lib/settl";
 import { formatUsdc, parseUsdc, splitAmount } from "@/lib/usdc";
 
 const MAX_SPLITS = 5;
@@ -40,7 +47,19 @@ export default function NewInvoicePage() {
 
 function InvoiceForm() {
   const router = useRouter();
-  const { accountId, signAndSend } = useWallet();
+  const { accountId, signAndSend, supportsGasless, signDelegate } = useWallet();
+  // Free invoice creation: needs a wallet that signs meta transactions and sponsored invoices left.
+  const [gasless, setGasless] = useState(false);
+  useEffect(() => {
+    if (!gaslessEnabled || !accountId) return;
+    let cancelled = false;
+    Promise.all([supportsGasless(), getSponsoredInvoicesLeft(accountId)])
+      .then(([supported, left]) => !cancelled && setGasless(supported && left > 0))
+      .catch(() => !cancelled && setGasless(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, supportsGasless]);
   const [clientName, setClientName] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -78,26 +97,36 @@ function InvoiceForm() {
         account_id: row.accountId.trim().toLowerCase(),
         basis_points: basisPoints[i] as number,
       }));
-      const transactions = await createInvoiceTransactions({
+      const invoice: NewInvoice = {
         clientName: clientName.trim(),
         description: description.trim(),
         amount: amountBaseUnits,
         dueDate: new Date(`${dueDate}T23:59:59`).getTime(),
         splits: contractSplits,
         escrow,
-      });
-      const outcomes = await signAndSend(transactions);
-      // The last transaction is create_invoice; its return value is the new invoice id.
-      const status = outcomes[outcomes.length - 1]?.status;
-      if (typeof status !== "object" || !status.SuccessValue) {
-        throw new Error("The invoice could not be created.");
-      }
-      const invoiceId = decodeSuccessValue<number>(status.SuccessValue);
+      };
+      const invoiceId = gasless ? await createGasless(invoice) : await createWithDeposit(invoice);
+      if (invoiceId === null) throw new Error("The invoice could not be created.");
       router.push(`/invoices/${invoiceId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setSubmitting(false);
     }
+  }
+
+  /** Normal flow: the freelancer's wallet sends the transactions and pays gas and storage. */
+  async function createWithDeposit(invoice: NewInvoice): Promise<number | null> {
+    const outcomes = await signAndSend(await createInvoiceTransactions(invoice));
+    // The last transaction is create_invoice; its return value is the new invoice id.
+    const status = outcomes[outcomes.length - 1]?.status;
+    return typeof status === "object" && status.SuccessValue ? decodeSuccessValue<number>(status.SuccessValue) : null;
+  }
+
+  /** Gasless flow: the wallet only signs; Settl's relayer sends it, the sponsor pool pays storage. */
+  async function createGasless(invoice: NewInvoice): Promise<number | null> {
+    const signed = await signDelegate(createInvoiceTransaction(invoice));
+    const relayed = await relaySignedDelegate(signed);
+    return returnValueFrom<number>(relayed, config.settlContract);
   }
 
   return (
@@ -239,7 +268,9 @@ function InvoiceForm() {
         {submitting ? "Confirm in your wallet…" : "Create invoice"}
       </Button>
       <p className="text-center text-xs text-muted">
-        Creating an invoice costs a tiny NEAR deposit for on-chain storage; the unused part is refunded.
+        {gasless
+          ? "Free: Settl pays the network fee and storage for this invoice. Your wallet only signs."
+          : "Creating an invoice costs a tiny NEAR deposit for on-chain storage; the unused part is refunded."}
       </p>
     </form>
   );

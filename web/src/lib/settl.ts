@@ -76,6 +76,11 @@ export async function getAllInvoicesByCreator(accountId: string): Promise<Invoic
   }
 }
 
+/** How many more invoices `accountId` can create with storage paid by the sponsor pool. */
+export function getSponsoredInvoicesLeft(accountId: string): Promise<number> {
+  return viewFunction(config.settlContract, "get_sponsored_invoices_left", { account_id: accountId });
+}
+
 export async function getUsdcBalance(accountId: string): Promise<string> {
   return viewFunction(config.usdcContract, "ft_balance_of", { account_id: accountId });
 }
@@ -138,27 +143,32 @@ export async function createInvoiceTransactions(invoice: NewInvoice): Promise<Tr
     ],
   }));
 
-  return [
-    ...registrations,
-    {
-      receiverId: config.settlContract,
-      actions: [
-        functionCall(
-          "create_invoice",
-          {
-            client_name: invoice.clientName,
-            description: invoice.description,
-            amount: invoice.amount,
-            due_date: invoice.dueDate.toString(),
-            splits: invoice.splits,
-            escrow: invoice.escrow,
-          },
-          30,
-          CREATE_INVOICE_DEPOSIT,
-        ),
-      ],
-    },
-  ];
+  return [...registrations, createInvoiceTransaction(invoice, CREATE_INVOICE_DEPOSIT)];
+}
+
+/**
+ * The `create_invoice` call. With `deposit` = "0" the sponsor pool pays for storage, which is
+ * what the gasless (meta transaction) flow uses; the relayer also registers split recipients.
+ */
+export function createInvoiceTransaction(invoice: NewInvoice, deposit = "0"): Transaction {
+  return {
+    receiverId: config.settlContract,
+    actions: [
+      functionCall(
+        "create_invoice",
+        {
+          client_name: invoice.clientName,
+          description: invoice.description,
+          amount: invoice.amount,
+          due_date: invoice.dueDate.toString(),
+          splits: invoice.splits,
+          escrow: invoice.escrow,
+        },
+        30,
+        deposit,
+      ),
+    ],
+  };
 }
 
 /** Pays an invoice: USDC moves to Settl with the invoice id attached, via `ft_transfer_call`. */

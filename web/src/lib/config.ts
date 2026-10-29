@@ -21,3 +21,9 @@ export const config = {
  * picker still shows live prices from dry-run quotes, but cannot create a deposit address.
  */
 export const intentsLive = config.network === "mainnet";
+
+/**
+ * Gasless invoice creation: the wallet signs a meta transaction, Settl's relayer (/api/relay)
+ * pays the gas, and the contract's sponsor pool pays storage. Needs RELAYER_* on the server.
+ */
+export const gaslessEnabled = process.env.NEXT_PUBLIC_GASLESS === "true";

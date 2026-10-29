@@ -20,6 +20,10 @@ interface WalletContextValue {
   disconnect: () => Promise<void>;
   /** Signs and sends transactions in order; returns each one's outcome. */
   signAndSend: (transactions: Transaction[]) => Promise<TransactionOutcome[]>;
+  /** Whether the connected wallet can sign meta transactions (needed for gasless). */
+  supportsGasless: () => Promise<boolean>;
+  /** Signs a transaction as a delegate action, without sending it; returns it base64-encoded. */
+  signDelegate: (transaction: Transaction) => Promise<string>;
 }
 
 /** The part of a NEAR transaction outcome the app reads. */
@@ -80,8 +84,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     [connector],
   );
 
+  const supportsGasless = useCallback(async () => {
+    if (!connector) return false;
+    const wallet = await connector.wallet();
+    return Boolean(wallet.manifest.features?.signDelegateActions);
+  }, [connector]);
+
+  const signDelegate = useCallback(
+    async (transaction: Transaction) => {
+      if (!connector) throw new Error("Wallet is still loading");
+      const wallet = await connector.wallet();
+      const { signedDelegateActions } = await wallet.signDelegateActions({ delegateActions: [transaction] });
+      return signedDelegateActions[0];
+    },
+    [connector],
+  );
+
   return (
-    <WalletContext.Provider value={{ accountId, loading, connect, disconnect, signAndSend }}>
+    <WalletContext.Provider
+      value={{ accountId, loading, connect, disconnect, signAndSend, supportsGasless, signDelegate }}
+    >
       {children}
     </WalletContext.Provider>
   );
