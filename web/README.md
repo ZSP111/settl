@@ -17,6 +17,7 @@ npm run dev                  # http://localhost:3000
 | `/invoices/[id]` | freelancer | Share the payment link (copy, WhatsApp, email), follow status, cancel |
 | `/dashboard` | freelancer | All invoices with paid / outstanding / escrow totals |
 | `/pay/[id]` | client | Mobile-first pay page → wallet payment → receipt with split breakdown; escrow approval; pay with ETH/SOL/BTC via NEAR Intents |
+| `/proof/[account]` | anyone | Verifiable income history: every paid invoice, the account's own share, monthly totals, "Save as PDF". Read live from the contract |
 | `/api/intents/quote`, `/api/intents/status` | server | Proxy to the 1-Click API. The quote route reads the invoice amount from the contract itself |
 
 Code map: `src/lib/settl.ts` (contract types, views, transactions), `src/lib/near.ts` (RPC view calls),

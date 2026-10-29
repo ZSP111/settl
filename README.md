@@ -61,6 +61,9 @@ Do: open `/invoices/new`, connect a NEAR testnet wallet, create an invoice. See:
 payment link. Open the link (e.g. on a phone), pay with a wallet holding testnet USDC. See: the receipt
 with each collaborator's share.
 
+Do: open [`/proof/billonaire.testnet`](https://web-seven-ruddy-87.vercel.app/proof/billonaire.testnet). See: that
+account's paid invoices and total received (4.80 USDC), read live from the contract.
+
 ## Contract API
 | Function | Type | Description |
 |---|---|---|
@@ -96,7 +99,8 @@ web/        Next.js app (see web/README.md)
 4. ✅ Web: create invoice → payment link → mobile pay page → receipt; freelancer dashboard
 5. ✅ Pay with any token via NEAR Intents (verified on mainnet)
 6. Gasless invoice creation via meta transactions
-7. Income proof page, overdue reminders
+7. ✅ Income proof page (`/proof/<account>`): shareable, verifiable history of paid invoices
+8. Overdue reminders, recurring invoices
 
 ## Libraries and templates
 - Contract scaffolded with `cargo near new` (official template), then rewritten for Settl.
