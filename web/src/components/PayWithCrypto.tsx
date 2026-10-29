@@ -18,10 +18,12 @@ import {
   type Quote,
   requestQuote,
   type SwapStatus,
+  WRAP_NEAR,
 } from "@/lib/intents";
-import type { Invoice } from "@/lib/settl";
+import { type Invoice, payIntentsDepositWithNear } from "@/lib/settl";
 
 import { Button, ErrorMessage } from "./ui";
+import { useWallet } from "./WalletProvider";
 
 const POLL_INTERVAL_MS = 5_000;
 
@@ -95,6 +97,7 @@ export function PayWithCrypto({ invoice, onPaid }: { invoice: Invoice; onPaid: (
 }
 
 function QuoteForm({ invoice, onDeposit }: { invoice: Invoice; onDeposit: (deposit: PendingDeposit) => void }) {
+  const { accountId } = useWallet();
   const [option, setOption] = useState<PaymentOption>(PAYMENT_OPTIONS[0]);
   const [address, setAddress] = useState("");
   const [preview, setPreview] = useState<Quote | null>(null);
@@ -139,6 +142,8 @@ function QuoteForm({ invoice, onDeposit }: { invoice: Invoice; onDeposit: (depos
             type="button"
             onClick={() => {
               setOption(o);
+              // Paying in NEAR: refunds go back to the connected NEAR account.
+              if (o.addressKind === "near" && accountId) setAddress(accountId);
               setPreview(null);
             }}
             className={`rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition ${
@@ -242,6 +247,23 @@ function DepositInstructions({
   }, [depositAddress]);
 
   const finished = status === "REFUNDED" || status === "FAILED";
+  const { accountId, connect, signAndSend } = useWallet();
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  // For NEAR, the connected wallet can make the deposit directly (wrap NEAR → send wNEAR).
+  async function sendWithNearWallet() {
+    if (!accountId) return connect();
+    setSending(true);
+    setSendError(null);
+    try {
+      await signAndSend([payIntentsDepositWithNear(WRAP_NEAR, accountId, depositAddress, quote.amountIn)]);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -254,6 +276,14 @@ function DepositInstructions({
         <img src={qr} alt="Deposit address QR code" className="mx-auto size-44 rounded-xl border border-line" />
       )}
       <CopyValue value={depositAddress} block />
+      {option.addressKind === "near" && status === "PENDING_DEPOSIT" && (
+        <>
+          <Button onClick={sendWithNearWallet} disabled={sending} className="w-full">
+            {sending ? "Confirm in your wallet…" : accountId ? `Send ${option.symbol} from ${accountId}` : "Connect NEAR wallet to send"}
+          </Button>
+          {sendError && <ErrorMessage>{sendError}</ErrorMessage>}
+        </>
+      )}
       {quote.depositMemo && (
         <p className="text-sm">
           Memo (required): <CopyValue value={quote.depositMemo} />

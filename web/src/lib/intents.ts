@@ -9,7 +9,7 @@
  * The browser talks to our own API routes (src/app/api/intents/*), which call 1-Click.
  */
 
-export type AddressKind = "evm" | "solana" | "bitcoin";
+export type AddressKind = "evm" | "solana" | "bitcoin" | "near";
 
 export interface PaymentOption {
   id: string;
@@ -50,23 +50,30 @@ export const PAYMENT_OPTIONS: PaymentOption[] = [
   },
   { id: "sol", label: "SOL on Solana", symbol: "SOL", assetId: "nep141:sol.omft.near", addressKind: "solana" },
   { id: "btc", label: "Bitcoin", symbol: "BTC", assetId: "nep141:btc.omft.near", addressKind: "bitcoin" },
+  // NEAR itself is swapped as wNEAR (the token form of NEAR); the pay page wraps it in the same transaction.
+  { id: "near", label: "NEAR", symbol: "NEAR", assetId: "nep141:wrap.near", addressKind: "near" },
 ];
 
 const ADDRESS_PATTERNS: Record<AddressKind, RegExp> = {
   evm: /^0x[0-9a-fA-F]{40}$/,
   solana: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
   bitcoin: /^(bc1[02-9ac-hj-np-z]{11,71}|[13][1-9A-HJ-NP-Za-km-z]{25,34})$/,
+  near: /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/,
 };
 
 export const ADDRESS_HINTS: Record<AddressKind, string> = {
   evm: "0x… address of the wallet you pay from",
   solana: "Solana address of the wallet you pay from",
   bitcoin: "Bitcoin address (bc1…) for refunds",
+  near: "Your NEAR account, e.g. you.near",
 };
 
 export function isValidAddress(kind: AddressKind, address: string): boolean {
   return ADDRESS_PATTERNS[kind].test(address.trim());
 }
+
+/** wNEAR, the NEP-141 token version of NEAR that Intents swaps. */
+export const WRAP_NEAR = "wrap.near";
 
 /** The account NEAR Intents pays from. Shown as "via NEAR Intents" on receipts. */
 export const INTENTS_CONTRACT = "intents.near";

@@ -82,8 +82,8 @@ const ONE_YOCTO = "1";
  * The contract keeps only what the invoice actually uses (a few thousandths) and refunds the rest.
  */
 const CREATE_INVOICE_DEPOSIT = "50000000000000000000000";
-/** USDC registration fee per account (0.00125 NEAR), the NEP-145 minimum on Circle's USDC. */
-const USDC_STORAGE_DEPOSIT = "1250000000000000000000";
+/** Registration fee per account (0.00125 NEAR): the NEP-145 minimum on Circle's USDC and on wNEAR. */
+const STORAGE_REGISTRATION_DEPOSIT = "1250000000000000000000";
 
 function functionCall(methodName: string, args: object, tgas: number, deposit = "0") {
   return {
@@ -118,7 +118,7 @@ export async function createInvoiceTransactions(invoice: NewInvoice): Promise<Tr
         "storage_deposit",
         { account_id: accountId, registration_only: true },
         30,
-        USDC_STORAGE_DEPOSIT,
+        STORAGE_REGISTRATION_DEPOSIT,
       ),
     ],
   }));
@@ -165,6 +165,30 @@ export function releaseEscrowTransaction(invoiceId: number): Transaction {
   return {
     receiverId: config.settlContract,
     actions: [functionCall("release_escrow", { invoice_id: invoiceId }, 150)],
+  };
+}
+
+/**
+ * Pays a NEAR Intents deposit address in NEAR, in one transaction to the wNEAR contract:
+ * register the sender and the deposit address (NEP-145, refunded if already registered),
+ * wrap the NEAR into wNEAR, then send it to the deposit address.
+ */
+export function payIntentsDepositWithNear(
+  wrapContract: string,
+  payer: string,
+  depositAddress: string,
+  amountYocto: string,
+): Transaction {
+  const register = (accountId: string) =>
+    functionCall("storage_deposit", { account_id: accountId, registration_only: true }, 10, STORAGE_REGISTRATION_DEPOSIT);
+  return {
+    receiverId: wrapContract,
+    actions: [
+      register(payer),
+      register(depositAddress),
+      functionCall("near_deposit", {}, 10, amountYocto),
+      functionCall("ft_transfer", { receiver_id: depositAddress, amount: amountYocto }, 15, ONE_YOCTO),
+    ],
   };
 }
 
