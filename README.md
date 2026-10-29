@@ -8,12 +8,13 @@ and can be held in escrow until the client approves the work.
 
 > **Status: in development.** Done so far: the smart contract handles the full invoice lifecycle
 > (create, pay in USDC, split payouts, escrow, cancel), and the web app covers create → share link →
-> pay → receipt, plus a dashboard. **Live on NEAR testnet.** Next: NEAR Intents. See [Roadmap](#roadmap).
+> pay → receipt, plus a dashboard. **Live on NEAR testnet and mainnet.** Pay-with-any-crypto via NEAR Intents is built. See [Roadmap](#roadmap).
 
 ## Deployed
 | Network | Settl contract | Payment token |
 |---|---|---|
 | Testnet | [`settl-billonaire.testnet`](https://testnet.nearblocks.io/address/settl-billonaire.testnet) | Circle USDC `3e2210e1…b8af` ([faucet](https://faucet.circle.com)) |
+| Mainnet | [`settl-billonaire.near`](https://nearblocks.io/address/settl-billonaire.near) | Circle USDC `17208628…33a1` |
 
 ## The problem
 Freelancers paid in crypto chase clients for the "right" token and chain, pay bridge and exchange fees,
