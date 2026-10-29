@@ -3,9 +3,18 @@ import Link from "next/link";
 
 import type { Status } from "@/lib/settl";
 
-export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = "",
+  padded = true,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  /** Set to false for cards whose rows bring their own padding, like lists. */
+  padded?: boolean;
+}) {
   return (
-    <div className={`rounded-2xl border border-line bg-white p-5 sm:p-6 ${className}`}>{children}</div>
+    <div className={`rounded-2xl border border-line bg-white ${padded ? "p-5 sm:p-6" : ""} ${className}`}>{children}</div>
   );
 }
 
