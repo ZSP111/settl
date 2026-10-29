@@ -61,6 +61,21 @@ export function getPendingBalance(accountId: string): Promise<string> {
   return viewFunction(config.settlContract, "get_pending_balance", { account_id: accountId });
 }
 
+/** Every invoice a freelancer created, fetched page by page (the contract returns at most 100 at a time). */
+export async function getAllInvoicesByCreator(accountId: string): Promise<Invoice[]> {
+  const pageSize = 100;
+  const all: Invoice[] = [];
+  for (let fromIndex = 0; ; fromIndex += pageSize) {
+    const page: Invoice[] = await viewFunction(config.settlContract, "get_invoices_by_creator", {
+      account_id: accountId,
+      from_index: fromIndex,
+      limit: pageSize,
+    });
+    all.push(...page);
+    if (page.length < pageSize) return all;
+  }
+}
+
 export async function getUsdcBalance(accountId: string): Promise<string> {
   return viewFunction(config.usdcContract, "ft_balance_of", { account_id: accountId });
 }

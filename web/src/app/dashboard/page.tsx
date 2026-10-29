@@ -15,7 +15,10 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-display text-3xl font-bold">Invoices</h1>
-        <ButtonLink href="/invoices/new">New invoice</ButtonLink>
+        <div className="flex items-center gap-4">
+          <ProofLink />
+          <ButtonLink href="/invoices/new">New invoice</ButtonLink>
+        </div>
       </div>
       <RequireWallet message="Connect your NEAR wallet to see your invoices.">
         <PendingBalance />
@@ -60,7 +63,7 @@ function InvoiceList() {
         <Stat label="Outstanding" value={total("Unpaid")} />
         <Stat label="In escrow" value={total("Escrowed")} className="text-accent" />
       </div>
-      <Card className="p-0 sm:p-0">
+      <Card padded={false}>
         <ul className="divide-y divide-line">
           {invoices.map((invoice) => (
             <li key={invoice.id}>
@@ -116,6 +119,16 @@ function PendingBalance() {
         {withdrawing ? "Confirm in your wallet…" : "Withdraw"}
       </Button>
     </Card>
+  );
+}
+
+function ProofLink() {
+  const { accountId } = useWallet();
+  if (!accountId) return null;
+  return (
+    <Link href={`/proof/${accountId}`} className="text-sm font-semibold text-accent">
+      Income proof →
+    </Link>
   );
 }
 
