@@ -101,6 +101,7 @@ function QuoteForm({ invoice, onDeposit }: { invoice: Invoice; onDeposit: (depos
   const [option, setOption] = useState<PaymentOption>(PAYMENT_OPTIONS[0]);
   const [address, setAddress] = useState("");
   const [preview, setPreview] = useState<Quote | null>(null);
+  const [quoting, setQuoting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const addressValid = isValidAddress(option.addressKind, address);
@@ -110,9 +111,11 @@ function QuoteForm({ invoice, onDeposit }: { invoice: Invoice; onDeposit: (depos
     if (!addressValid) return;
     let cancelled = false;
     const timer = setTimeout(() => {
+      setQuoting(true);
       requestQuote({ invoiceId: invoice.id, optionId: option.id, refundTo: address, dry: true })
         .then((quote) => !cancelled && (setPreview(quote), setError(null)))
-        .catch((err) => !cancelled && (setPreview(null), setError(err.message)));
+        .catch((err) => !cancelled && (setPreview(null), setError(err.message)))
+        .finally(() => !cancelled && setQuoting(false));
     }, 400);
     return () => {
       cancelled = true;
@@ -168,6 +171,9 @@ function QuoteForm({ invoice, onDeposit }: { invoice: Invoice; onDeposit: (depos
         <span className="block text-xs text-muted">If anything goes wrong, your funds are refunded here.</span>
       </label>
 
+      {addressValid && quoting && !preview && (
+        <p className="rounded-xl bg-surface p-3 text-sm text-muted">Getting the live price from NEAR Intents…</p>
+      )}
       {addressValid && preview && (
         <div className="rounded-xl bg-surface p-3 text-sm">
           <p>
