@@ -8,13 +8,15 @@ and can be held in escrow until the client approves the work.
 
 > **Status: in development.** Done so far: the smart contract handles the full invoice lifecycle
 > (create, pay in USDC, split payouts, escrow, cancel), and the web app covers create → share link →
-> pay → receipt, plus a dashboard. **Live on NEAR testnet and mainnet.** Pay-with-any-crypto via NEAR Intents is built. See [Roadmap](#roadmap).
+> pay → receipt, plus a dashboard. **Live on NEAR testnet and mainnet**, including pay-with-any-crypto via NEAR Intents. See [Roadmap](#roadmap).
 
 ## Deployed
 | Network | Settl contract | Payment token |
 |---|---|---|
 | Testnet | [`settl-billonaire.testnet`](https://testnet.nearblocks.io/address/settl-billonaire.testnet) | Circle USDC `3e2210e1…b8af` ([faucet](https://faucet.circle.com)) |
 | Mainnet | [`settl-billonaire.near`](https://nearblocks.io/address/settl-billonaire.near) | Circle USDC `17208628…33a1` |
+
+Web app: [testnet demo](https://web-seven-ruddy-87.vercel.app) (free test money) · [mainnet](https://settl-mainnet.vercel.app) (real USDC, pay with any crypto)
 
 ## The problem
 Freelancers paid in crypto chase clients for the "right" token and chain, pay bridge and exchange fees,
@@ -30,7 +32,7 @@ and splits the payout on-chain.
 | NEP-141 fungible tokens (USDC) | Clients pay with `ft_transfer_call` (invoice id in `msg`); the contract checks it in `ft_on_transfer` and pays each split with `ft_transfer`. A wrong payment panics, so USDC refunds the client automatically | ✅ |
 | NEAR Connect wallet selector | Freelancers and clients sign in with any NEAR wallet (Meteor, HOT, Intear, Ledger, …) and sign transactions in the browser | ✅ |
 | Cross-contract calls + callbacks | Each payout is followed by a callback; if a transfer fails (e.g. recipient not registered on USDC), the share is kept for them to `withdraw` instead of being lost | ✅ |
-| NEAR Intents (1-Click API) | Clients pay with ETH, SOL, BTC or USDC on Base/Arbitrum/Solana, from any wallet, with no NEAR account. Settl requests an `EXACT_OUTPUT` quote for the invoice amount with `customRecipientMsg` = the invoice id, so solvers deliver USDC to the contract via `ft_transfer_call` and the normal `ft_on_transfer` marks it paid. Intents is mainnet-only, so on testnet the pay page shows live dry-run prices | 🟡 built; live payments need the mainnet deployment |
+| NEAR Intents (1-Click API) | Clients pay with ETH, SOL, BTC, NEAR or USDC on Base/Arbitrum/Solana, with no NEAR account needed for non-NEAR tokens. Settl requests an `EXACT_OUTPUT` quote for the invoice amount with `customRecipientMsg` = the invoice id, so solvers deliver USDC to the contract via `ft_transfer_call` and the normal `ft_on_transfer` marks it paid. Verified on mainnet: [invoice #1](https://settl-mainnet.vercel.app/pay/1) was paid in NEAR and settled as 1.00 USDC from `intents.near`. Intents is mainnet-only; on testnet the pay page shows live dry-run prices | ✅ |
 | Meta transactions | Gasless invoice creation for freelancers | planned |
 
 ## Try it
@@ -92,8 +94,9 @@ web/        Next.js app (see web/README.md)
 2. ✅ Contract: pay via `ft_on_transfer`, payouts to splits, escrow release, cancel, end-to-end tests
 3. ✅ Deploy to testnet
 4. ✅ Web: create invoice → payment link → mobile pay page → receipt; freelancer dashboard
-5. Pay with any token via NEAR Intents; gasless via meta transactions
-6. Income proof page, overdue reminders
+5. ✅ Pay with any token via NEAR Intents (verified on mainnet)
+6. Gasless invoice creation via meta transactions
+7. Income proof page, overdue reminders
 
 ## Libraries and templates
 - Contract scaffolded with `cargo near new` (official template), then rewritten for Settl.
