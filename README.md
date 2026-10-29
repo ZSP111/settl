@@ -33,7 +33,8 @@ and splits the payout on-chain.
 | NEAR Connect wallet selector | Freelancers and clients sign in with any NEAR wallet (Meteor, HOT, Intear, Ledger, …) and sign transactions in the browser | ✅ |
 | Cross-contract calls + callbacks | Each payout is followed by a callback; if a transfer fails (e.g. recipient not registered on USDC), the share is kept for them to `withdraw` instead of being lost | ✅ |
 | NEAR Intents (1-Click API) | Clients pay with ETH, SOL, BTC, NEAR or USDC on Base/Arbitrum/Solana, with no NEAR account needed for non-NEAR tokens. Settl requests an `EXACT_OUTPUT` quote for the invoice amount with `customRecipientMsg` = the invoice id, so solvers deliver USDC to the contract via `ft_transfer_call` and the normal `ft_on_transfer` marks it paid. Verified on mainnet: [invoice #1](https://settl-mainnet.vercel.app/pay/1) was paid in NEAR and settled as 1.00 USDC from `intents.near`. Intents is mainnet-only; on testnet the pay page shows live dry-run prices | ✅ |
-| Meta transactions | Gasless invoice creation for freelancers | planned |
+| Meta transactions (NEP-366) | Gasless invoice creation: the freelancer's wallet only *signs* a delegate action; Settl's relayer (`/api/relay`) submits it and pays the gas. The relayer only accepts calls to the Settl contract (`create_invoice`, `cancel_invoice`, `release_escrow`) with no NEAR attached, and registers new split recipients on USDC itself. Verified on testnet: invoice #7 was created by an account whose balance didn't change by a single yoctoNEAR | ✅ testnet |
+| Sponsored storage + state migration | The contract's sponsor pool pays invoice storage when no deposit is attached (max 10 per account). Adding it changed the contract's state layout, so the upgrade ran a `migrate` function that rewrote the old state into the new shape, keeping every invoice | ✅ |
 
 ## Try it
 Requirements: Rust (the pinned toolchain in `contract/rust-toolchain.toml` installs automatically),
@@ -41,7 +42,7 @@ Requirements: Rust (the pinned toolchain in `contract/rust-toolchain.toml` insta
 
 ```bash
 cd contract
-cargo test --lib    # unit tests: expect "44 passed"
+cargo test --lib    # unit tests: expect "51 passed"
 cargo test --test payment_flow   # end-to-end on a local NEAR sandbox: expect "4 passed"
 cargo near build non-reproducible-wasm   # build target/near/settl.wasm
 ```
@@ -77,6 +78,9 @@ account's paid invoices and total received (4.80 USDC), read live from the contr
 | `get_invoices_by_creator(account_id, from_index?, limit?)` | view | A freelancer's invoices, newest first (default 50, max 100) |
 | `get_usdc_contract()` | view | The accepted token |
 | `get_pending_balance(account_id)` | view | USDC waiting for `withdraw` |
+| `fund_sponsor_pool()` | change, payable | Adds the attached NEAR to the pool that pays storage for deposit-free (gasless) invoices |
+| `get_sponsor_pool()` / `get_sponsored_invoices_left(account_id)` | view | Pool balance in yoctoNEAR / sponsored invoices an account has left (max 10) |
+| `migrate()` | private | One-time state upgrade from the previous contract version |
 
 Invoice statuses: `Unpaid` → `Paid`, or `Unpaid` → `Escrowed` → `Paid`, or `Unpaid` → `Cancelled`.
 
@@ -86,6 +90,8 @@ contract/   Rust smart contract (cargo-near project)
   src/lib.rs       contract state, create/cancel invoice, views
   src/invoice.rs   Invoice, Split, Status types
   src/payment.rs   ft_on_transfer, payouts, escrow release, withdraw
+  src/sponsor.rs   sponsor pool for gasless invoices
+  src/migrate.rs   state migration from the previous version
   src/tests/       unit tests
   tests/           end-to-end sandbox tests
   mock-usdc/       minimal NEP-141 token used only by the tests
@@ -98,7 +104,7 @@ web/        Next.js app (see web/README.md)
 3. ✅ Deploy to testnet
 4. ✅ Web: create invoice → payment link → mobile pay page → receipt; freelancer dashboard
 5. ✅ Pay with any token via NEAR Intents (verified on mainnet)
-6. Gasless invoice creation via meta transactions
+6. ✅ Gasless invoice creation via meta transactions + sponsored storage (testnet)
 7. ✅ Income proof page (`/proof/<account>`): shareable, verifiable history of paid invoices
 8. Overdue reminders, recurring invoices
 
