@@ -14,7 +14,7 @@ jobs:
       run:
         working-directory: contract
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # rustup reads contract/rust-toolchain.toml and installs the pinned toolchain + wasm target.
       - name: Install toolchain
         run: rustup show active-toolchain || rustup toolchain install
@@ -27,8 +27,17 @@ jobs:
         run: cargo clippy --tests -- -D warnings
       - name: Unit tests
         run: cargo test --lib
+      # The end-to-end tests compile the contracts to wasm with cargo-near.
+      - name: Install cargo-near
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.22.0/cargo-near-installer.sh | sh
       - name: End-to-end tests (local NEAR sandbox)
-        run: cargo test --test payment_flow
+        run: |
+          set -o pipefail
+          cargo test --test payment_flow 2>&1 | tee e2e.log || {
+            # Surface the failure reason as annotations, readable without opening the full log.
+            grep -E "panicked|Error|error:|FAILED" e2e.log | head -20 | sed 's/^/::error::/'
+            exit 1
+          }
 
   web:
     name: Web (lint, types, build)
@@ -37,15 +46,16 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run lint
-      - run: npx tsc --noEmit
+      # Next.js generates the PageProps/LayoutProps route types; create them before type-checking.
+      - run: npx next typegen && npx tsc --noEmit
       - run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
