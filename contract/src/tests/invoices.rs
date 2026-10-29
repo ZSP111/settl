@@ -159,9 +159,9 @@ fn create_invoice_rejects_too_many_splits() {
 
 #[test]
 #[should_panic(expected = "to cover storage")]
-fn create_invoice_requires_storage_deposit() {
+fn create_invoice_rejects_too_small_deposit() {
     let mut contract = new_contract();
-    set_caller(&alice(), NearToken::from_yoctonear(0));
+    set_caller(&alice(), NearToken::from_yoctonear(1));
     contract.create_invoice(
         "Acme".to_string(),
         "Work".to_string(),

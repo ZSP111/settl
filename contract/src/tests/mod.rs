@@ -1,7 +1,9 @@
 //! Unit tests. Shared helpers live here; the tests are grouped by feature.
 
 mod invoices;
+mod migration;
 mod payments;
+mod sponsor;
 
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::json_types::{U64, U128};

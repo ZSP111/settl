@@ -5,7 +5,9 @@
 //! optionally held in escrow until the client approves).
 
 mod invoice;
+mod migrate;
 mod payment;
+mod sponsor;
 
 use std::collections::HashSet;
 
@@ -30,6 +32,7 @@ enum StorageKey {
     Invoices,
     InvoicesByCreator,
     PendingBalances,
+    SponsoredInvoices,
 }
 
 #[near(contract_state)]
@@ -44,6 +47,11 @@ pub struct Contract {
     /// USDC (base units) owed to accounts whose payout could not be sent automatically,
     /// e.g. because they were not registered on the USDC contract. Claimed with `withdraw`.
     pending_balances: LookupMap<AccountId, u128>,
+    /// NEAR set aside to pay invoice storage for freelancers who attach no deposit,
+    /// so they can use Settl without holding NEAR (see sponsor.rs).
+    sponsor_pool: NearToken,
+    /// How many invoices each account has had sponsored, to cap what one account can use.
+    sponsored_invoices: LookupMap<AccountId, u32>,
 }
 
 #[near]
@@ -56,13 +64,16 @@ impl Contract {
             invoices: IterableMap::new(StorageKey::Invoices),
             invoices_by_creator: LookupMap::new(StorageKey::InvoicesByCreator),
             pending_balances: LookupMap::new(StorageKey::PendingBalances),
+            sponsor_pool: NearToken::from_yoctonear(0),
+            sponsored_invoices: LookupMap::new(StorageKey::SponsoredInvoices),
         }
     }
 
     /// Creates an invoice and returns its id.
     ///
-    /// The caller pays for the storage the invoice uses (a fraction of a NEAR):
-    /// attach enough deposit and the unused part is refunded.
+    /// The invoice's storage (a fraction of a NEAR) is paid either by the caller, who attaches
+    /// a deposit and gets the unused part refunded, or, when nothing is attached, by the sponsor
+    /// pool, up to `MAX_SPONSORED_INVOICES_PER_ACCOUNT` times per account.
     #[payable]
     pub fn create_invoice(
         &mut self,
@@ -86,6 +97,10 @@ impl Contract {
 
         let storage_before = env::storage_usage();
         let creator = env::predecessor_account_id();
+        let sponsored = env::attached_deposit().is_zero();
+        if sponsored {
+            self.use_sponsored_slot(&creator);
+        }
         let id = self.next_invoice_id;
         self.next_invoice_id += 1;
 
@@ -113,8 +128,14 @@ impl Contract {
         // Write to storage now so the storage measurement below is accurate.
         self.invoices.flush();
         self.invoices_by_creator.flush();
+        self.sponsored_invoices.flush();
 
-        charge_for_storage(storage_before, creator);
+        let cost = storage_cost_since(storage_before);
+        if sponsored {
+            self.pay_storage_from_pool(cost);
+        } else {
+            charge_attached_deposit(cost, creator);
+        }
         id
     }
 
@@ -206,11 +227,14 @@ fn assert_valid_splits(splits: &[Split]) {
     );
 }
 
-/// Makes the caller pay for the storage added since `storage_before` and refunds
-/// whatever they attached beyond that.
-fn charge_for_storage(storage_before: u64, payer: AccountId) {
+/// The NEAR needed to pay for storage added since `storage_before`.
+fn storage_cost_since(storage_before: u64) -> NearToken {
     let bytes_used = env::storage_usage().saturating_sub(storage_before);
-    let cost = env::storage_byte_cost().saturating_mul(u128::from(bytes_used));
+    env::storage_byte_cost().saturating_mul(u128::from(bytes_used))
+}
+
+/// Makes the caller pay `cost` from their attached deposit and refunds the rest.
+fn charge_attached_deposit(cost: NearToken, payer: AccountId) {
     let attached = env::attached_deposit();
     require!(
         attached >= cost,
