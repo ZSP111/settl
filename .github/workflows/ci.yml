@@ -1,0 +1,51 @@
+# Runs on every push and pull request: the contract's checks and tests, and the web app's build.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  contract:
+    name: Contract (fmt, clippy, unit + sandbox tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contract
+    steps:
+      - uses: actions/checkout@v4
+      # rustup reads contract/rust-toolchain.toml and installs the pinned toolchain + wasm target.
+      - name: Install toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contract
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --tests -- -D warnings
+      - name: Unit tests
+        run: cargo test --lib
+      - name: End-to-end tests (local NEAR sandbox)
+        run: cargo test --test payment_flow
+
+  web:
+    name: Web (lint, types, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
