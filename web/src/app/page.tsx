@@ -157,9 +157,12 @@ export default function Home() {
           <Link href="/dashboard" className="hover:text-ink">
             Dashboard
           </Link>
-          <a href="https://github.com/ZSP111/settl" className="hover:text-ink">
-            GitHub
-          </a>
+          {/* The source link is for hackathon judges on the demo site, not for mainnet users. */}
+          {config.network === "testnet" && (
+            <a href="https://github.com/ZSP111/settl" className="hover:text-ink">
+              GitHub
+            </a>
+          )}
         </div>
       </footer>
     </div>
