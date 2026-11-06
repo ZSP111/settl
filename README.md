@@ -179,7 +179,7 @@ docs/screenshots/  screenshots from the live deployments
 
 ## Other project by the same builder
 Disclosed per the hackathon rules (Q-015): Peter Obisi also built **Heir**, crypto inheritance across chains,
-for NEAR HACKATHON: https://github.com/ZSP111/heir. The two projects are independent and share no code.
+for NEAR HACKATHON: https://github.com/ZSP111/Heir. The two projects are independent and share no code.
 
 ## License
 [MIT](LICENSE)
