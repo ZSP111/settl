@@ -177,5 +177,9 @@ docs/screenshots/  screenshots from the live deployments
 - Built with help from AI coding tools (Claude Code), as allowed by the hackathon rules (Q-005).
 - No code from earlier projects.
 
+## Other project by the same builder
+Disclosed per the hackathon rules (Q-015): Peter Obisi also built **Heir**, crypto inheritance across chains,
+for NEAR HACKATHON: https://github.com/ZSP111/heir. The two projects are independent and share no code.
+
 ## License
 [MIT](LICENSE)
